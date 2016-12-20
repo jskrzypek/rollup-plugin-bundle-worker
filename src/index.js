@@ -2,7 +2,9 @@ var fs = require('fs'),
     path = require('path'),
     paths = new Map();
 
-module.exports = function () {
+module.exports = function (options) {
+    options = options || {};
+    include = options.include || [];
     return {
         resolveId: function (importee, importer) {
             if (importee === 'rollup-plugin-bundle-worker') {
@@ -13,6 +15,11 @@ module.exports = function () {
                     target = path.resolve(path.dirname(importer), name);
 
                 paths.set(target, name);
+                return target;
+            }
+            else if (include.indexOf(importee) >= 0) {
+                target = path.resolve(path.dirname(importer), importee);
+                paths.set(target, importee);
                 return target;
             }
         },
