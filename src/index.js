@@ -5,22 +5,44 @@ var fs = require('fs'),
 module.exports = function (options) {
     options = options || {};
     include = options.include || [];
+    var name = 'bundle-worker';
+    var plugins;
+    function resolver(importee, importer) {
+        var resolved;
+        if (Array.isArray(plugins) && plugins.length > 0) {
+            resolved = plugins.filter(function(p) {
+                    return p.name !== name && !!p.resolveId;
+                })
+                .reduce(function(acc, p) {
+                    return acc || p.resolveId(importee, importer);
+                });
+        }
+
+        return resolved || path.resolve(path.dirname(importer), importee);
+    }
     return {
+        name: name,
+        options: function(opts) {
+            plugins = opts.plugins;
+        },
         resolveId: function (importee, importer) {
             if (importee === 'rollup-plugin-bundle-worker') {
                 return path.resolve(__dirname, 'workerhelper.js');
             }
             else if (importee.indexOf('worker!') === 0) {
                 var name = importee.split('!')[1],
-                    target = path.resolve(path.dirname(importer), name);
+                    target = resolver(name, importer);
 
                 paths.set(target, name);
                 return target;
             }
             else if (include.indexOf(importee) >= 0) {
-                target = path.resolve(path.dirname(importer), importee);
+                var target = resolver(importee, importer);
                 paths.set(target, importee);
                 return target;
+            }
+            else {
+                return null;
             }
         },
 
